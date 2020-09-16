@@ -1,45 +1,51 @@
 const axios = require("axios");
-const { SPOTIFYWRAP_API_BASE_URL, ...config } = require("./config");
+const config = require("./config");
 
 const getAPIUrl = (suffix, version = 1) => {
-  return `${SPOTIFYWRAP_API_BASE_URL}/api/${version}/${suffix}`;
+  return `${config.SPOTIFYWRAP_API_BASE_URL}/api/v${version}/${suffix}`;
 };
 
-const getToken = () => {
+const getNewReleases = () => {
   const {
-    SPOTIFYWRAP_API_USERNAME: username,
+    SPOTIFYWRAP_API_USER: username,
     SPOTIFYWRAP_API_PASSWORD: password,
   } = config;
-  return axios.post(getAPIUrl("login"), {
-    data: {
-      username,
-      password,
+
+  const authStr = `${username}:${password}`;
+
+  return axios.post(getAPIUrl("fetchNewReleases"), null, {
+    headers: {
+      Authorization: `Bearer ${atob(authStr)}`,
     },
   });
 };
 
-const getNewReleases = (token) => {
-  return axios.post(getAPIUrl("fetchNewReleases"), {
-    Authorization: `Bearer ${token}`,
-  });
-};
-
-const upload2DB = async (data) => {
+const upload2DB = async (docs) => {
   try {
     const {
       SPOTIFYWRAP_DB_USER,
       SPOTIFYWRAP_DB_PASSWORD,
       SPOTIFYWRAP_DB_URI,
       SPOTIFYWRAP_DB_NAME,
-      SPOTIFYWRAP_DB_COLL,
+      SPOTIFYWRAP_DB_COLLECTION,
     } = config;
     const { MongoClient } = require("mongodb");
-    const uri = `mongodb://${SPOTIFYWRAP_DB_USER}:${SPOTIFYWRAP_DB_PASSWORD}@${SPOTIFYWRAP_DB_URI}`;
-    const client = new MongoClient(uri);
+    const uri = `mongodb://${SPOTIFYWRAP_DB_USER}:${SPOTIFYWRAP_DB_PASSWORD}@${SPOTIFYWRAP_DB_URI}/${SPOTIFYWRAP_DB_NAME}`;
+    const client = new MongoClient(uri, { useUnifiedTopology: true });
     await client.connect();
     const db = await client.db(SPOTIFYWRAP_DB_NAME);
-    const releases = await db.collection(SPOTIFYWRAP_DB_COLL);
-    const docs = data;
+    const cls = await db.collections();
+    let collectionFound = false;
+    for (const cl of cls) {
+      if (cl.collectionName === SPOTIFYWRAP_DB_COLLECTION) {
+        collectionFound = true;
+      }
+    }
+    if (!collectionFound) {
+      await db.createCollection(SPOTIFYWRAP_DB_COLLECTION);
+    }
+    const releases = await db.collection(SPOTIFYWRAP_DB_COLLECTION);
+    await releases.deleteMany();
     await releases.insertMany(docs);
     await client.close();
   } catch (err) {
@@ -48,10 +54,7 @@ const upload2DB = async (data) => {
 };
 
 const uploadFlow = async () => {
-  const {
-    data: { access_token: token },
-  } = await getToken();
-  const albums = await getNewReleases(token);
+  const { data: albums } = await getNewReleases();
   return await upload2DB(albums);
 };
 
@@ -65,10 +68,12 @@ const validateConfig = () => {
   return allValidated;
 };
 
+const atob = (str) => Buffer.from(str).toString("base64");
+
 module.exports = {
-  getToken,
   getNewReleases,
   upload2DB,
   uploadFlow,
   validateConfig,
+  atob,
 };

@@ -12,7 +12,7 @@ const main = async () => {
   console.info("Fetcher: starting to fetch new releases.");
   try {
     await uploadFlow();
-    console.info("Fetcher: fetched and upload done.");
+    console.info("Fetcher: fetched and replaced older docs.");
   } catch (err) {
     console.error("Fetcher: Flow failed. Error: \n %j", err.message);
   } finally {
@@ -34,7 +34,7 @@ const run = (cronString = "0 */12 * * *") => {
   });
 };
 
-exports = {
+module.exports = {
   main,
   run,
 };
