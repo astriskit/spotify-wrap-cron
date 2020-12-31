@@ -30,7 +30,7 @@ const upload2DB = async (docs) => {
       SPOTIFYWRAP_DB_COLLECTION,
     } = config;
     const { MongoClient } = require("mongodb");
-    const uri = `mongodb://${SPOTIFYWRAP_DB_USER}:${SPOTIFYWRAP_DB_PASSWORD}@${SPOTIFYWRAP_DB_URI}/${SPOTIFYWRAP_DB_NAME}`;
+    const uri = `mongodb+srv://${SPOTIFYWRAP_DB_USER}:${SPOTIFYWRAP_DB_PASSWORD}@${SPOTIFYWRAP_DB_URI}/${SPOTIFYWRAP_DB_NAME}?retryWrites=true&w=majority`;
     const client = new MongoClient(uri, { useUnifiedTopology: true });
     await client.connect();
     const db = await client.db(SPOTIFYWRAP_DB_NAME);
